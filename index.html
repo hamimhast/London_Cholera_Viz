@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		   <meta charset="UTF-8">
+    	<title>Golden Square Cholera</title>
+    	<script src="https://d3js.org/d3.v3.min.js"></script>
+    	<link rel="stylesheet" href="data/project1.css">
+	</head>
+
+	<body>
+		<div class = "grid-container">
+			<div class = "title">
+        		<center> <h2> Golden Square Cholera Outbreak</h2> </center>
+			</div>
+
+			<div class = "nav">
+				<ul>
+            		<li id = "first_li"><a href="final_documentation.html">Documentation</a></li>
+            		<li id = "second_li"><a href = https://www.youtube.com/watch?v=UyTB0KSP1D4 >Video</a></li>
+        		</ul>	
+			</div>
+
+			<div class = "main">
+				<div id = "overview" class = "overview">
+					<div class = "age" id = "age">
+						<center><h3>DISTRIBUTION PLOTS</h3></center>
+						<center><h4>By Age Group</h4></center>
+					</div>
+
+					<div class = "piechart", id = "piechart">
+						<center><h4>By Gender and Age</h4></center>	
+					</div>
+
+					<div class = "legend" id = "legend">
+						<div class = "L_title" id = "L_title "><center><h4>LEGEND</h4></center></div>	
+						<div class = "pieLegend" id = "pieLegend"> 
+							<h4>Pie Chart Legend</h4>
+						</div>
+						<div class = "mapLegend" id = "mapLegend"> 
+							<h4>Map Legend</h4>
+						</div>
+					</div>
+				</div>
+
+
+				<div  id = "map" class = "map">
+					<center><h3>INTERACTIVE MAP </h3></center>	
+				</div>
+
+
+				<div id = "timeline" class = "timeline">
+					<center><h3>DEATHS OVER TIME</h3></center>
+				        	
+			    	<!-- <div class="input_pannel" style="width: 680px;">
+			            <div class="input_form" style="width: 50%;">
+			              <label class="control-label" id="label1" for="Start_date">Start Date:</label>
+			              <div>
+			              	<select id="Start_date"></select>
+			              </div>
+			            </div>
+
+			            <div class="input_form" style="width: 50%;">
+			              <label class="control-label" id="label2" for="End_date">End Date:</label>
+			              <div>
+			                <select id="End_date"></select>
+			              </div>
+			            </div>
+			            <button onclick="updateTimeline(daily_death)">Update Graph</button>
+			    	</div> -->
+				    
+
+
+				</div>
+			</div>
+
+			<div class = "footer">
+				<p>
+            		<center>
+            			Hamim Nigena<br>
+            			H517: Visualization Design <br>
+            			Project 1: London Cholera Outbreak Visualization
+        			</center>
+        		</p>	
+			</div>	
+		</div>
+
+		<script type="text/javascript">
+
+
+			//////////////////////////////////////////////////////////////////////////////////////////////////
+          	///          	  Declaring Global variables												   ///
+          	//////////////////////////////////////////////////////////////////////////////////////////////////
+				
+				var male_color = '#0090d0';
+				var female_color = '#ec008c';
+				var pump_color = 'black',
+					workhouseColor = '#E8C547',
+					BrewColor = '#FF7D00';
+
+				var pieColors = d3.scale.ordinal()
+	          			.range(['#b35806', '#f1a340', '#fee0b6', '#d8daeb', '#998ec3', '#542788']);
+
+	          	var mapColors = d3.scale.ordinal()
+	          			.range([male_color, female_color, pump_color, workhouseColor, BrewColor]);
+
+
+	          	var daily_death = null ;
+
+
+				//global variable to contain the data that I will use for viz by age/gender
+				var deathAgeGroup = [ {group:"0-10", total:0, male:0, female:0 },
+									{group:"11-20", total:0, male:0, female:0 },
+									{group:"21-40", total:0, male:0, female:0 },
+									{group:"41-60", total:0, male:0, female:0 },
+									{group:"61-80", total:0, male:0, female:0 },
+									{group:"81+", total:0, male:0, female:0 }];
+
+				var mapLegData = [{type: "Male Death"}, 
+                					{type: "Female Death"},
+                					{type: "Pump Location"},
+                					{type: "Work house"},
+                					{type: "Brewery"}];
+
+
+                //////////////////////////////////////////////////////////////////////////////////////////////////
+          		///      Defining Function to draw the map and all its sub-components						   ///
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+
+                
+                function drawStreets(data){
+
+                	var map_height = 460;
+					var map_width = 700 ;
+
+                	var yScale = d3.scale
+	                    .linear()
+	                    .domain([0,18]).range([0, map_height]);
+
+    				var xScale = d3.scale
+	                    .linear()
+	                    .domain([20,0]).range([0,map_width]);
+
+	                ////////////zoom settings///////////////////////
+	                //Disclaimer: The implementation of this zoom functionality follows the method found at the link below
+	                //https://bl.ocks.org/saifulazfar/dd5f14926bb3b1ef19a6f734c6891545
+
+          			var zoom = d3.behavior
+          				.zoom()
+          				.translate([0,0])
+          				.scale(1)
+          				.scaleExtent([0.5,5])
+          				.on("zoom", zoomed);
+
+          			var active = d3.select(null);
+
+          			function cancel(){
+          				if (d3.event.defaultPrevented)
+          					d3.event.stopPropagation();
+          			}
+
+
+          			function reset() {
+          				active.classed("active", false);
+          				active = d3.select(null);
+          				map_svg.transition()
+      						.duration(1000)
+      						.call(zoom.translate([0, 0]).scale(1).event);
+
+          			}
+
+          			function zoomed(){
+          				g.style("stroke-width", 1.5 / d3.event.scale + "px");
+  						g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+          			}
+
+          			//////////////////////////////////////////////////////////
+
+                	
+
+                	var map_svg = d3.select('#map').append("svg")
+          				.attr("width", 600)
+          				.attr("height", 400)
+          				.attr("style", "border: solid 4px black;")
+          				.attr("transform","translate(100,10) ")
+          				.on("click", cancel, true);
+
+          			map_svg.append("rect")
+          				.attr("width", 600)
+          				.attr("height", 400)
+          				.attr("fill", "none")
+          				.on("click", reset);
+
+          			var g = map_svg.append("g");
+
+
+          			map_svg.call(zoom).call(zoom.event);
+
+
+          			var drawline = d3.svg.line()
+          				.y(function(d){return 483 - yScale(d.y)})
+          				.x(function (d) { return 590 -xScale(d.x)});
+
+          			g.selectAll("line")
+          				.data(data)
+          				.enter()
+          				.append("path")
+          				.style('fill', 'none')
+          				.style('stroke', '#780303')
+          				.style('stroke-width', '1px')
+          				.attr('d', drawline)
+          				.on("click", zoomed);
+
+          			
+          			//adding workhouse
+          			g.append("rect")
+	                    .attr('class', 'rect_house')
+	                    .attr('id', 'rect_workhouse')
+                		.attr("width", 40)
+                		.attr("height", 20)
+                		.attr("x",  300)
+                		.attr("y", -110)
+                		.attr("transform", "rotate(45)")
+                		.style('fill', workhouseColor)
+                		.on('mouseover', function(){
+                			d3.selectAll('#leg_workhouse').style("font-size", "25px").style("font_weight", "bold");
+                			d3.selectAll('#rect_workhouse').attr("width", 60).attr("height", 40);
+                		})
+						.on('mouseout', function(){
+							d3.selectAll('#leg_workhouse').style("font-size", "16px").style("font_weight", "normal");
+							d3.selectAll('#rect_workhouse').attr("width", 40).attr("height", 20);
+						});
+
+                	//adding Brewery
+          			g.append("rect")
+	                    .attr('class', 'rect_house')
+	                    .attr('id', 'rect_brewery')
+                		.attr("width", 40)
+                		.attr("height", 30)
+                		.attr("x",  500)
+                		.attr("y", 63)
+                		.style('fill', BrewColor)
+                		.on('mouseover', function(){
+                			d3.selectAll('#leg_brewery').style("font-size", "25px").style("font_weight", "bold");
+                			d3.selectAll('#rect_brewery').attr("width", 60).attr("height", 50);
+                		})
+						.on('mouseout', function(){
+							d3.selectAll('#leg_brewery').style("font-size", "16px").style("font_weight", "normal");
+							d3.selectAll('#rect_brewery').attr("width", 40).attr("height", 30);
+						});
+
+                	//Adding major street names
+          			g.append("text")
+	                    .style("fill", "black")
+	                    .style("font-size", "14px")
+	                    .attr("dy", ".29em")
+	                    .attr("text-anchor", "middle")
+	                    .attr("transform", "translate(320,170) rotate(-23)")
+	                    .text("Broad Street")
+	                    .attr("id", "broad")
+	                    .attr("class", "street_name")
+	                    .on('mouseover', function(){d3.selectAll('#broad').style("font-size", "35px").style("font_weight", "bold")})
+						.on('mouseout', function(){d3.selectAll('#broad').style("font-size", "14px").style("font_weight", "normal")});
+
+	                g.append("text")
+	                    .style("fill", "black")
+	                    .style("font-size", "14px")
+	                    .attr("dy", ".29em")
+	                    .attr("text-anchor", "middle")
+	                    .attr("transform", "translate(175,246) rotate(55)")
+	                    .text("Regent Street")
+	                    .attr("id", "regent")
+	                    .attr("class", "street_name")
+	                    .on('mouseover', function(){d3.selectAll('#regent').style("font-size", "35px").style("font_weight", "bold")})
+						.on('mouseout', function(){d3.selectAll('#regent').style("font-size", "14px").style("font_weight", "normal")});
+
+	                g.append("text")
+	                    .style("fill", "black")
+	                    .style("font-size", "14px")
+	                    .attr("dy", ".29em")
+	                    .attr("text-anchor", "middle")
+	                    .attr("transform", "translate(55,226) rotate(67)")
+	                    .text("Coerce Street")
+	                    .attr("id", "coerce")
+	                    .attr("class", "street_name")
+	                    .on('mouseover', function(){d3.selectAll('#coerce').style("font-size", "35px").style("font_weight", "bold")})
+						.on('mouseout', function(){d3.selectAll('#coerce').style("font-size", "14px").style("font_weight", "normal")});
+
+	                g.append("text")
+	                    .style("fill", "black")
+	                    .style("font-size", "14px")
+	                    .attr("dy", ".29em")
+	                    .attr("text-anchor", "middle")
+	                    .attr("transform", "translate(330,40) rotate(-10)")
+	                    .text("Oxford Street")
+	                    .attr("id", "oxford")
+	                    .attr("class", "street_name")
+	                    .on('mouseover', function(){d3.selectAll('#oxford').style("font-size", "35px").style("font_weight", "bold")})
+						.on('mouseout', function(){d3.selectAll('#oxford').style("font-size", "14px").style("font_weight", "normal")});
+
+
+	                g.append("text")
+	                    .style("fill", "black")
+	                    .style("font-size", "14px")
+	                    .attr("dy", ".29em")
+	                    .attr("text-anchor", "middle")
+	                    .attr("transform", "translate(390,260) rotate(-38)")
+	                    .text("Brewer Street")
+	                    .attr("id", "brewer")
+	                    .attr("class", "street_name")
+	                    .on('mouseover', function(){d3.selectAll('#brewer').style("font-size", "35px").style("font_weight", "bold")})
+						.on('mouseout', function(){d3.selectAll('#brewer').style("font-size", "14px").style("font_weight", "normal")});
+
+        			g.append("text")
+	                    .style("fill", "black")
+	                    .style("font-size", "14px")
+	                    .attr("dy", ".29em")
+	                    .attr("text-anchor", "middle")
+	                    .attr("transform", "translate(494,120) rotate(61)")
+	                    .text("Dean Street")
+	                    .attr("id", "dean")
+	                    .attr("class", "street_name")
+	                    .on('mouseover', function(){d3.selectAll('#dean').style("font-size", "35px").style("font_weight", "bold")})
+						.on('mouseout', function(){d3.selectAll('#dean').style("font-size", "14px").style("font_weight", "normal")});
+
+	                // Reading in the pumps data and adding the pumps to the map
+                	d3.csv("data/pumps.csv", function (data) {
+                		pumps = data;
+
+                		var pump_loc = g.selectAll(".circ_pump")
+                			.data(pumps)
+                			.enter()
+                			.append("circle")
+                			.attr('class', 'circ_pump')
+                			.attr('id', function(d,i){return "pump_"+i ; })
+                			.attr("r", 5)
+                			.attr("cx", function(d) { return 590 - xScale(d.x);})
+                			.attr("cy", function(d) { return 483 - yScale(d.y); })
+                			.attr('stroke', 'black')
+                			.style('fill', pump_color)
+                			.on('mouseover', function(d,i){
+                				d3.selectAll('#leg_pump').style("font-size", "25px")
+                				.style("font_weight", "bold").style("color", pump_color);
+                				d3.selectAll("#pump_"+i).attr("r", "12px" );
+                			})
+
+	                		.on('mouseout', function(d,i){
+	                			d3.selectAll('#leg_pump').style("font-size", "16px")
+	                			.style("font_weight", "normal").style("color", "#000000");
+	                			d3.selectAll("#pump_"+i).attr("r", "5px" );
+	                		});	
+
+                	});
+
+                	// Reading in the death and gender data and adding them to the map
+                	d3.csv("data/deathdays.csv", function (daysdata) {
+                		
+                		d3.csv("data/deaths_age_sex.csv", function (data) {
+
+	                		deaths = data;
+	                		deaths_per_day = daysdata;
+	                		daily_death = daysdata;
+
+	                		// data to use for linking: adding the date of death to the death location data
+	                		var m = 0;
+	                		for (var n=0; n < deaths_per_day.length; n++ ){
+	                			for(var p=0; p < deaths_per_day[n].deaths; p++){
+	                				deaths[m].date = deaths_per_day[n].date;
+	                				m += 1;
+	                			}
+	                		}
+
+
+	                		//Pushing the data in my array (global variable) so I can use it in other functions
+	                		for (var x=0; x<deaths.length; x++ ){
+
+	                			//group 0-10, at index 0
+	                			if (deaths[x].age == 0){
+	                				deaths[x].ageGroup = "0-10";
+	                				deathAgeGroup[0].total+=1;
+	                				if (deaths[x].gender == 0){
+	                					deathAgeGroup[0].male+=1;
+	                				}
+	                				else {deathAgeGroup[0].female+=1;}
+	                			}
+
+	                			//group 11-20, at index 1
+	                			else if (deaths[x].age == 1){
+	                				deaths[x].ageGroup = "11-20";
+	                				deathAgeGroup[1].total+=1;
+	                				if (deaths[x].gender == 0){
+	                					deathAgeGroup[1].male+=1;
+	                				}
+	                				else {deathAgeGroup[1].female+=1;}
+	                			}
+
+
+	                			//group 21-40, at index 2
+	                			else if (deaths[x].age == 2){
+	                				deaths[x].ageGroup = "21-40";
+	                				deathAgeGroup[2].total+=1;
+	                				if (deaths[x].gender == 0){
+	                					deathAgeGroup[2].male+=1;
+	                				}
+	                				else {deathAgeGroup[2].female+=1;}
+	                			}
+
+	                			//group 41-60, at index 3
+	                			else if (deaths[x].age == 3){
+	                				deaths[x].ageGroup = "41-60";
+	                				deathAgeGroup[3].total+=1;
+	                				if (deaths[x].gender == 0){
+	                					deathAgeGroup[3].male+=1;
+	                				}
+	                				else {deathAgeGroup[3].female+=1;}
+	                			}
+
+
+	                			//group 61-80, at index 4
+	                			else if (deaths[x].age == 4){
+	                				deaths[x].ageGroup = "61-80";
+	                				deathAgeGroup[4].total+=1;
+	                				if (deaths[x].gender == 0){
+	                					deathAgeGroup[4].male+=1;
+	                				}
+	                				else {deathAgeGroup[4].female+=1;}
+	                			}
+
+	                			//group 80+, at index 5
+	                			else if (deaths[x].age == 5){
+	                				deaths[x].ageGroup = "80+";
+	                				deathAgeGroup[5].total+=1;
+	                				if (deaths[x].gender == 0){
+	                					deathAgeGroup[5].male+=1;
+	                				}
+	                				else {deathAgeGroup[5].female+=1;}
+	                			}
+	                		}
+
+	                		//Calling the funtcion to draw the timeline
+	                		draw_barGraph(deaths_per_day);
+
+	                		//Calling the function to draw the Age bargraph using the data from the global variable
+	                		drawByAge(deathAgeGroup);
+
+	                		//Calling the function to draw the Gender graphs using the data stored in the global variable
+	                		drawPieChart(deathAgeGroup);
+
+	                		//Calling the function to draw the Legend
+	                		drawLegend(deathAgeGroup, mapLegData);
+
+	                		//Updating timeline
+	                		// updateTimeline(deaths_per_day);
+
+
+
+	                		var death_loc = g.selectAll("circle")
+	                			.data(deaths)
+	                			.enter()
+	                			.append("circle")
+	                			.attr('class', function(d,i){return "death_circ"+i ;})
+	                			.attr("r", 3)
+	                			.attr("cx", function(d) { return 590 - xScale(d.x);})
+	                			.attr("cy", function(d) { return 483 - yScale(d.y); })
+	                			.attr("genderid", function(d){if(d.gender == 0) return "male" ; else return "female" ; })
+	                			.attr("id", function(d){return "death_dot_"+d.date;})
+	                			.style('fill', function(d){if(d.gender == 0) return male_color; else return female_color; })
+	                			.on('mouseover', death_mouseover)
+	                			.on('mouseout', death_mouseout);
+	                		
+                				
+	                	});
+                	});
+
+				
+                }
+
+                
+                //////////////////////////////////////////////////////////////////////////////////////////////////
+          		///     Loading the streets dataset and calling the function to draw street					   ///
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+                
+
+				//Now, calling the function for map, pumps, 
+          		d3.json("data/streets.json", function (sdata) {
+          			street_data = sdata;
+          			drawStreets(street_data); //Calling the funtcion to draw the map
+    
+          		});
+
+
+
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+          		///          			SOME FUNCTIONS DEFINITIONS - By Hamim Nigena						   ///
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+
+          		//Disclaimer: These graphs are drawn using methods observed at this link:
+          		//https://www.youtube.com/watch?v=BDpBAFvdjYo&t=619s
+
+                // Defining Function to draw the timeline
+                function draw_barGraph(data){
+                	
+
+                	var timeline_height = 180;
+					var timeline_width = 650 ;
+					var start = new Date(1854,8,19);
+					var end = new Date(1854,9,29);
+
+
+                	var yScale = d3.scale.linear()
+	                    .domain([145,0])
+	                    .range([0, timeline_height]);
+
+    				//scale for the dates on the axis
+    				var xScale = d3.time.scale()
+	                    .domain([start,end])
+	                    .range([30,timeline_width-40]);
+
+	                //scale for the rectangles (bars)
+	                var x = d3.scale.ordinal()
+                		.rangeRoundBands([30, timeline_width], .1)
+                		.domain(data.map(function(d) { return d.date; }));
+
+                	var xAxis = d3.svg.axis()
+                		.orient("bottom")
+                		.scale(xScale)
+                		.ticks(5);
+                	
+
+                	var yAxis = d3.svg.axis().scale(yScale).orient("left").tickFormat(d3.format(""));
+
+                	//Creating the svg for the timeline
+	                var timeline_graph = d3.select('#timeline')
+	                	.append("svg")
+	                	.attr("id", "barGraph")
+	                	.attr("width", 700)
+          				.attr("height", 230)
+          				.attr("transform","translate(100,40) ");
+          				
+
+          			//Adding the bars (rectangles)
+          			timeline_graph.selectAll('rect')
+          				.data(data)
+          				.enter()
+          				.append('rect')
+          				.attr('class', "timeline_bar")
+          				.attr('id', function(d){return "time_bar_"+d.date})
+          				.attr("width", x.rangeBand())
+                		.attr("height", function(d) { return timeline_height - yScale(d.deaths); })
+                		.attr("x", function(d) { return x(d.date); })
+                		.attr("y", function(d) { return yScale(d.deaths);})
+                		.attr('stroke', 'white')
+                		.style('fill', 'green')
+                		.on('mouseover', function(d){
+                			d3.selectAll("#death_dot_"+d.date).attr("r", '10px');
+                			d3.selectAll("#time_bar_"+d.date).attr('fill', 'aqua'); //this is not working
+
+                		})
+                		.on('mouseout', function(d){
+                			d3.selectAll("#death_dot_"+d.date).attr("r", '3px');
+                			d3.selectAll("#time_bar_"+d.date).attr('fill', 'green'); //not working
+                		});
+
+                	//Adding xAxis to the graph
+                	timeline_graph.append('g')
+                		.attr("class", "axis xaxis")
+                		.attr("transform", "translate(0," + timeline_height + ")" )
+                		.call( xAxis )
+                		.selectAll("text");
+                		
+
+                	//Adding yAxis to the graph
+                	timeline_graph.append("g")
+                		.attr("class", "axis yaxis")
+                		.attr("transform", "translate(40,0)")
+                		.call(yAxis)
+                		.append("text")
+                		.attr("transform", "rotate(-90)")
+                		.attr("y", 6)
+                		.attr("dy", ".71em")
+                		.style("text-anchor", "end")
+                		.text("Death Count");
+
+                }
+                
+                
+                //////////////////////////////////////////////////////////////////////////////////////////////////
+          		///       		Defining function to show the distribution by age group  					   ///
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+                
+
+                function drawByAge(data){
+                	var graph_height = 250;
+					var graph_width = 460 ;
+
+				
+
+                	var yScale = d3.scale.linear()
+	                    .domain([180,0])
+	                    .range([40, graph_height]);
+
+
+	                //scale for the rectangles (bars)
+	                var xScale = d3.scale.ordinal()
+                		.rangeRoundBands([40, graph_width], 0)
+                		.domain(data.map(function(d){return d.group}));
+
+                	var xAxis = d3.svg.axis().orient("bottom").scale(xScale);
+
+
+                	var yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+                	//Creating the svg for the Age Graph
+	                var age_graph = d3.select('#age')
+	                	.append("svg")
+	                	.attr("id", "AgeGraph")
+	                	.attr("width", 600)
+          				.attr("height", 280)
+          				.attr("style", "border: solid 2px black;");
+
+          				
+          			//Adding the bars (rectangles)
+          			age_graph.selectAll("rect")
+          				.data(data)
+          				.enter()
+          				.append('rect')
+          				.attr('class', "bar2")
+          				.attr('id', function(d,i){ return "bar2_"+i ;})
+          				.attr("x", function(d, i) { return (i*70); })
+                		.attr("y", function(d) { return yScale(d.total);})
+                		.attr("width", 70)
+                		.style('stroke-width', '10')
+                		.attr("height", function(d) { return graph_height - yScale(d.total); })
+                		.attr('fill', 'green')
+                		.attr('stroke', 'white')
+                		.attr("transform","translate(40,0) ")
+                		.on('mouseover', function(d,i){
+                			d3.selectAll("#male_pie_"+i).style("fill", male_color);
+                			d3.selectAll("#female_pie_"+i).style("fill", female_color);
+                			d3.selectAll("#total_pie_"+i).style("fill", "aqua");
+                			d3.selectAll("#male_pie_text_"+i).style("font-size", "35px").style("font_weight", "bold");
+                			d3.selectAll("#female_pie_text_"+i).style("font-size", "35px").style("font_weight", "bold");
+                			d3.selectAll("#total_pie_text_"+i).style("font-size", "35px").style("font_weight", "bold");
+                			d3.selectAll("#pie_leg_"+i).style("font-size", "25px").style("font_weight", "bold");
+                		})
+                		.on('mouseout', function(d,i){
+                			d3.selectAll("#male_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+                			d3.selectAll("#female_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+                			d3.selectAll("#total_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+                			d3.selectAll("#male_pie_text_"+i).style("font-size", "16px").style("font_weight", "normal");
+                			d3.selectAll("#female_pie_text_"+i).style("font-size", "16px").style("font_weight", "normal");
+                			d3.selectAll("#total_pie_text_"+i).style("font-size", "16px").style("font_weight", "normal");
+                			d3.selectAll("#pie_leg_"+i).style("font-size", "16px").style("font_weight", "normal");
+                		});
+                		
+              		
+
+
+                	//Adding xAxis to the graph
+                	age_graph.append('g')
+                		.attr("class", "axis xaxis")
+                		.attr("transform", "translate(0," + graph_height + ")" )
+                		.call( xAxis );
+                		
+
+                	//Adding yAxis to the graph
+                	age_graph.append("g")
+                		.attr("class", "axis yaxis")
+                		.attr("transform", "translate(40,0)")
+                		.call(yAxis)
+                		.append("text")
+                		.attr("y",10)
+                		.attr("x",240)
+                		.attr("dy", ".51em")
+                		.style("text-anchor", "end")
+                		.text("Total deaths");
+
+                	age_graph.selectAll("count_text")
+                		.data(data).enter()
+                		.append("text")
+                		.attr("class", "count_text")
+                		.attr("transform", "translate(40,0)")
+                		.text(function(d){return d3.format(",")(d.total);})
+                		.attr("x", function(d, i) { return (i*70)+(70/2); })
+                		.attr("y", function(d) { return yScale(d.total);})
+                		.attr("text-anchor", "middle");
+
+                }
+
+
+                //////////////////////////////////////////////////////////////////////////////////////////////////
+          		///       		Defining function to show draw the pie-Charts								   ///
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+
+          		//Disclaimer: These graphs are drawn using methods observed at this link:
+          		//https://www.youtube.com/watch?v=ofaQUzBIrp0
+
+                //Defining the function for the age/gender distribution pie-charts
+                function drawPieChart(data){
+
+                	var svg_height = 220;
+                	var svg_width = 640;
+                	var each_width = (svg_width/3)-10;
+
+	                var arc = d3.svg.arc()
+	                	.innerRadius(0)
+	                	.outerRadius(90);
+
+
+
+	                //Starting with the male pie-chart
+
+	                var maleSVG = d3.select("#piechart")
+	                	.append("svg")
+	                	.attr("id", "malePieChart")
+	                	.attr("width", each_width )
+	          			.attr("height", svg_height)
+	          			.attr("style", "border: solid 2px black;");
+	          			
+
+	          		var pie_m = d3.layout.pie()
+	          			.sort(null)
+	          			.value(function(d){return d.male;})
+
+	          		var male_data = pie_m(data);
+
+	          		maleSVG.selectAll("path")
+	          			.data(male_data)
+	          			.enter()
+	          			.append("path")
+	          			.attr("transform", "translate("+each_width/2+","+(svg_height+25)/2+")")
+	          			.attr("d", arc)
+	          			.each(function(d){this._current = d;})
+	          			.style("fill", function(d){return pieColors(d.data.group);})
+	          			.attr("id", function(d,i){return "male_pie_"+i})
+	          			.on('mouseover', function(d,i){
+	          				d3.selectAll("#bar2_"+i).attr('fill', 'aqua');
+	          				d3.selectAll("#male_pie_"+i).style("fill", male_color);
+	          				d3.selectAll("#female_pie_"+i).style("fill", female_color);
+                			d3.selectAll("#total_pie_"+i).style("fill", "aqua");
+                			d3.selectAll("#female_pie_text_"+i).style("font-size", "35px").style("font_weight", "bold");
+                			d3.selectAll("#total_pie_text_"+i).style("font-size", "35px").style("font_weight", "bold");
+                			d3.selectAll("#pie_leg_"+i).style("font-size", "25px").style("font_weight", "bold");
+	          			})
+	          			.on('mouseout', function(d,i){
+	          				d3.selectAll("#bar2_"+i).attr('fill', 'green');
+	          				d3.selectAll("#male_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+	          				d3.selectAll("#female_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+                			d3.selectAll("#total_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+                			d3.selectAll("#female_pie_text_"+i).style("font-size", "16px").style("font_weight", "normal");
+                			d3.selectAll("#total_pie_text_"+i).style("font-size", "16px").style("font_weight", "normal");
+                			d3.selectAll("#pie_leg_"+i).style("font-size", "16px").style("font_weight", "normal");
+	          			});
+
+
+
+	          		maleSVG.selectAll("text")
+	          			.data(male_data)
+	          			.enter()
+	          			.append("text")
+	          			.attr("class", 'm_datatext')
+	          			.attr("id", function(d,i){return "male_pie_text_"+i;})
+	          			.text(function(d){return d.data.male;})
+	          			.attr("dy", ".29em")
+	          			.style("text-anchor", "middle")
+	          			.attr("transform", function(d){return "translate(" + arc.centroid(d)+ ") " + "translate("+each_width/2+","+(svg_height+25)/2+")" ;});
+	
+	          		
+
+	          		maleSVG.append("text")
+	                    .style("fill", "black")
+	                    .style("font-size", "16px")
+	                    .attr("dy", ".29em")
+	                    .attr("text-anchor", "middle")
+	                    .attr("transform", "translate(100,10)")
+	                    .text("Male deaths");
+
+
+	          		//Female pie-chart
+
+	          		var femaleSVG = d3.select("#piechart")
+	                	.append("svg")
+	                	.attr("id", "femalePieChart")
+	                	.attr("width", each_width )
+	          			.attr("height", svg_height)
+	          			.attr("style", "border: solid 2px black;");
+
+	          		var pie_f = d3.layout.pie()
+	          			.sort(null)
+	          			.value(function(d){return d.female;})
+
+	          		var female_data = pie_f(data)
+
+	          		femaleSVG.selectAll("path")
+	          			.data(female_data)
+	          			.enter()
+	          			.append("path")
+	          			.attr("transform", "translate("+each_width/2+","+(svg_height+25)/2+")")
+	          			.attr("d", arc)
+	          			.each(function(d){this._current = d;})
+	          			.style("fill", function(d){return pieColors(d.data.group);})
+	          			.attr("id", function(d,i){return "female_pie_"+i})
+	          			.on('mouseover', function(d,i){
+	          				d3.selectAll("#bar2_"+i).attr('fill', 'aqua');
+	          				d3.selectAll("#male_pie_"+i).style("fill", male_color);
+	          				d3.selectAll("#female_pie_"+i).style("fill", female_color);
+                			d3.selectAll("#total_pie_"+i).style("fill", "aqua");
+                			d3.selectAll("#male_pie_text_"+i).style("font-size", "35px").style("font_weight", "bold");
+                			d3.selectAll("#total_pie_text_"+i).style("font-size", "35px").style("font_weight", "bold");
+                			d3.selectAll("#pie_leg_"+i).style("font-size", "25px").style("font_weight", "bold");
+	          			})
+	          			.on('mouseout', function(d,i){
+	          				d3.selectAll("#bar2_"+i).attr('fill', 'green');
+	          				d3.selectAll("#male_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+	          				d3.selectAll("#female_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+                			d3.selectAll("#total_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+                			d3.selectAll("#male_pie_text_"+i).style("font-size", "16px").style("font_weight", "normal");
+                			d3.selectAll("#total_pie_text_"+i).style("font-size", "16px").style("font_weight", "normal");
+                			d3.selectAll("#pie_leg_"+i).style("font-size", "16px").style("font_weight", "normal");
+	          			});
+
+	          		femaleSVG.selectAll("text")
+	          			.data(female_data)
+	          			.enter()
+	          			.append("text")
+	          			.attr("class", "f_datatext")
+	          			.attr("id", function(d,i){return "female_pie_text_"+i;})
+	          			.text(function(d){return d.data.female;})
+	          			.attr("dy", ".29em")
+	          			.style("text-anchor", "middle")
+	          			.attr("transform", function(d){return "translate(" + arc.centroid(d)+ ") " + "translate("+each_width/2+","+(svg_height+25)/2+")" ;});
+
+
+	          		femaleSVG.append("text")
+	                    .style("fill", "black")
+	                    .style("font-size", "16px")
+	                    .attr("dy", ".29em")
+	                    .attr("text-anchor", "middle")
+	                    .attr("transform", "translate(100,10)")
+	                    .text("Female deaths");
+
+
+
+	          		// Total deaths pie-chart
+
+	          		var totalSVG = d3.select("#piechart")
+	                	.append("svg")
+	                	.attr("id", "totalPieChart")
+	                	.attr("width", each_width )
+	          			.attr("height", svg_height)
+	          			.attr("style", "border: solid 2px black;");
+
+
+
+	          		var pie_t = d3.layout.pie()
+	          			.sort(null)
+	          			.value(function(d){return d.total;})
+
+	          		var total_data = pie_t(data)
+
+
+	          		totalSVG.selectAll("path")
+	          			.data(total_data)
+	          			.enter()
+	          			.append("path")
+	          			.attr("transform", "translate("+each_width/2+","+(svg_height+25)/2+")")
+	          			.attr("d", arc)
+	          			.each(function(d){this._current = d;})
+	          			.style("fill", function(d){return pieColors(d.data.group);})
+	          			.attr("id", function(d,i){return "total_pie_"+i})
+	          			.on('mouseover', function(d,i){
+	          				d3.selectAll("#bar2_"+i).attr('fill', 'aqua');
+	          				d3.selectAll("#male_pie_"+i).style("fill", male_color);
+	          				d3.selectAll("#female_pie_"+i).style("fill", female_color);
+                			d3.selectAll("#total_pie_"+i).style("fill", "aqua");
+                			d3.selectAll("#male_pie_text_"+i).style("font-size", "35px").style("font_weight", "bold");
+                			d3.selectAll("#female_pie_text_"+i).style("font-size", "35px").style("font_weight", "bold");
+                			d3.selectAll("#pie_leg_"+i).style("font-size", "25px").style("font_weight", "bold");
+	          			})
+	          			.on('mouseout', function(d,i){
+	          				d3.selectAll("#bar2_"+i).attr('fill', 'green');
+	          				d3.selectAll("#male_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+	          				d3.selectAll("#female_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+                			d3.selectAll("#total_pie_"+i).style("fill", function(d){return pieColors(d.data.group);});
+                			d3.selectAll("#male_pie_text_"+i).style("font-size", "16px").style("font_weight", "normal");
+                			d3.selectAll("#female_pie_text_"+i).style("font-size", "16px").style("font_weight", "normal");
+                			d3.selectAll("#pie_leg_"+i).style("font-size", "16px").style("font_weight", "normal");
+	          			});
+
+	          		totalSVG.selectAll("text")
+	          			.data(female_data)
+	          			.enter()
+	          			.append("text")
+	          			.attr("class", "t_datatext")
+	          			.attr("id", function(d,i){return "total_pie_text_"+i;})
+	          			.text(function(d){return d.data.total;})
+	          			.attr("dy", ".29em")
+	          			.style("text-anchor", "middle")
+	          			.attr("transform", function(d){return "translate(" + arc.centroid(d)+ ") " + "translate("+each_width/2+","+(svg_height+25)/2+")" ;});
+
+	          		totalSVG.append("text")
+	                    .style("fill", "black")
+	                    .style("font-size", "16px")
+	                    .attr("dy", ".29em")
+	                    .attr("text-anchor", "middle")
+	                    .attr("transform", "translate(100,10)")
+	                    .text("Total deaths");
+
+                }
+
+
+                //////////////////////////////////////////////////////////////////////////////////////////////////
+          		///       				Function to draw the Legend 					  					   ///
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+
+                function drawLegend(piedata, mapdata){
+
+                	var pieLegend = d3.select("#pieLegend")
+                		.append('table')
+                		.attr('class', 'pieLegend');
+
+                	//appending rows
+                	var raws = pieLegend.append('raws')
+                		.selectAll("tr")
+                		.data(piedata)
+                		.enter()
+                		.append("tr");
+
+                	//appending rectangles for each age range
+                	raws.append("td")
+                		.append("svg")
+                		.attr("height", '18')
+                		.attr("width", '18')
+                		.append("rect")
+                		.attr("fill",function(d){ return pieColors(d.group); })
+                		.attr("height", '18')
+                		.attr("width", '18');
+
+                	//Adding the Age group
+                	raws.append("td")
+                		.text(function(d){ return d.group;})
+                		.attr('id', function(d,i){return 'pie_leg_'+i ;});
+
+
+
+                	// Now the map legend
+
+                	var mapLegend = d3.select("#mapLegend")
+                		.append('table')
+                		.attr('class', 'mapLegend');
+
+                	var ml_raws = mapLegend.append('ml_raws')
+                		.selectAll("tr")
+                		.data(mapdata)
+                		.enter()
+                		.append("tr");
+
+                	ml_raws.append("td")
+                		.append("svg")
+                		.attr("height", '20')
+                		.attr("width", '20')
+                		.append("rect")
+                		.attr("fill",function(d){ return mapColors(d.type); })
+                		.attr("height", '20')
+                		.attr("width", '20');
+
+                	ml_raws.append("td")
+                		.text(function(d){ return d.type;})
+                		.attr("id", function(d){if (d.type==="Male Death") return "leg_male";
+                							else if (d.type==="Female Death") return "leg_female";
+                							else if (d.type==="Pump Location") return "leg_pump";
+                							else if (d.type==="Work house") return "leg_workhouse";
+                							else if (d.type==="Brewery") return "leg_brewery";});
+
+                }
+
+
+                //////////////////////////////////////////////////////////////////////////////////////////////////
+          		///       				Tooltip functionality for the map							  		   ///
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+
+          		// This tooltip functionality was created using the methods described in the video on the link below:
+          			// https://www.youtube.com/watch?v=M3kbQnXeFnY
+
+          		var div1 = d3.select("body").append("div")
+          			.style('opacity', 0)
+          			.style('position', 'absolute')
+          			.style('border', 'solid 2px green')
+          			.style('text-align', 'left')
+          			.style('border-radius', '8px')
+          			.style('width', '160px')
+          			.style('background', 'white')
+          			.style('height', '2.5em')
+          			.style('color', 'black')
+          			.style('font', '16px sans-serif');
+
+
+          		function death_mouseover(d,i){
+          			div1.html("Age Group: " + d.ageGroup 
+          				+ "<br />" + "Date of death: " + d.date)
+          				.style('left', (d3.event.pageX + 9)+'px')
+          				.style('top', (d3.event.pageY - 43)+'px')
+          				.style('opacity', 1);
+
+          			if(d.gender == 0) 
+						d3.selectAll("#leg_male")
+							.style("font-size", "25px")
+							.style("font_weight", "bold")
+							.style("color", male_color);
+					else if (d.gender == 1)
+						d3.selectAll("#leg_female")
+							.style("font-size", "25px")
+							.style("font_weight", "bold")
+							.style("color", female_color);
+
+					d3.selectAll(".death_circ"+i ).attr("r", "10px");
+					d3.selectAll("#time_bar_"+d.date).attr('fill', function(d){if(d.gender == 0) return male_color; 
+					else return female_color; }); //not working
+
+          		}
+
+
+          		function death_mouseout(d,i){
+          			div1.style('opacity', 1e-7);
+          			if(d.gender == 0) 
+							d3.selectAll("#leg_male")
+								.style("font-size", "16px")
+								.style("font_weight", "normal")
+								.style("color", "#000000");
+						else if (d.gender == 1)
+							d3.selectAll("#leg_female")
+								.style("font-size", "16px")
+								.style("font_weight", "normal")
+								.style("color", "#000000");
+
+						d3.selectAll(".death_circ"+i).attr("r", "3px");
+						d3.selectAll("#time_bar_"+d.date).attr('fill', 'green'); // not working
+          		}
+
+
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+          		///       					Updating the timeline graph	   					  		 		   ///
+          		//////////////////////////////////////////////////////////////////////////////////////////////////
+
+          		// function updateTimeline(data){
+
+          		// 	date_list = data.map(function(d){return d.date;})
+
+	          	// 	let startDate = d3.select("#Start_date");
+	          	// 	let endDate = d3.select("#End_date");
+
+	          	// 	let startOption =  startDate.selectAll("option").data(date_list).enter().append("option");
+	           // 		startOption.text(function (d) {return d;}).attr("value", function (d) {return d;});
+
+	           //  	let endOption =  endDate.selectAll("option").data(date_list).enter().append("option");
+	           //  	endOption.text(function (d) {return d;}).attr("value", function (d) {return d; });
+
+	            	
+
+	           //  	var selected_Start = d3.select("#Start_date").on('change', function(){return $('#Start_date) option:selected').text()});
+	           //  	var selected_End = d3.select("#End_date").on('change', function(){return $('#End_date option:selected').text()});
+
+
+	           //  	DataToUse = data.filter(function(d){return (d.date == selected_Start);});
+	           //  	console.log(selected_Start)
+	           //  	console.log(data[0].date);
+	            	
+
+		        // }
+		</script>
+	</body>
